@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from pymongo import MongoClient
 from datetime import datetime
+import altair as alt
 
 st.set_page_config(page_title="SPL Monitor", page_icon="🔊")
 
@@ -70,11 +71,16 @@ filtered = df[(df["timestamp"] >= start) & (df["timestamp"] <= end)]
 
 st.subheader("A-Weighted Sound Pressure Level Over Time")
 
-st.line_chart(
-    filtered,
-    x="timestamp",
-    y="Value"
-)
+chart = alt.Chart(filtered).mark_line().encode(
+    x=alt.X("timestamp:T", title="Time"),
+    y=alt.Y("Value:Q", title="SPL dB(A)"),
+    tooltip=[
+        alt.Tooltip("timestamp:T", title="Timestamp", format="%Y-%m-%d %H:%M:%S"),
+        alt.Tooltip("Value:Q", title="dB(A)", format=".2f")
+    ]
+).interactive()  # zoom + hover
+
+st.altair_chart(chart, use_container_width=True)
 
 # -------------------------------------------------------------------
 # STATS
