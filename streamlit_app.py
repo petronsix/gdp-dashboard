@@ -71,17 +71,35 @@ filtered = df[(df["timestamp"] >= start) & (df["timestamp"] <= end)]
 
 st.subheader("A-Weighted Sound Pressure Level Over Time")
 
-chart = alt.Chart(filtered).mark_line().encode(
+hover = alt.selection_point(
+    fields=["timestamp"],
+    nearest=True,
+    on="mouseover",
+    empty=False
+)
+
+line = alt.Chart(filtered).mark_line().encode(
     x=alt.X("timestamp:T", title="Time"),
-    y=alt.Y("Value:Q", title="SPL dB(A)"),
+    y=alt.Y("Value:Q", title="SPL dB(A)")
+)
+
+points = line.mark_point().encode(
+    opacity=alt.condition(hover, alt.value(1), alt.value(0))
+)
+
+tooltips = alt.Chart(filtered).mark_rule().encode(
+    x="timestamp:T",
+    y="Value:Q",
+    opacity=alt.condition(hover, alt.value(0.3), alt.value(0)),
     tooltip=[
-        alt.Tooltip("timestamp:T", title="Timestamp", format="%Y-%m-%d %H:%M:%S"),
+        alt.Tooltip("timestamp:T", title="Time", format="%Y-%m-%d %H:%M:%S"),
         alt.Tooltip("Value:Q", title="dB(A)", format=".2f")
     ]
-).interactive()  # zoom + hover
+).add_params(hover)
+
+chart = (line + points + tooltips).interactive()
 
 st.altair_chart(chart, use_container_width=True)
-
 # -------------------------------------------------------------------
 # STATS
 # -------------------------------------------------------------------
