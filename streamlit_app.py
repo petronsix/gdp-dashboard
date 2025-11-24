@@ -12,7 +12,7 @@ st.set_page_config(page_title="SPL Monitor", page_icon="🔊")
 @st.cache_data
 def load_spl_data():
     """Fetch SPL time-series data from MongoDB and return as a DataFrame."""
-    url = "mongodb+srv://petr:password@cluster0.bysfd7d.mongodb.net/?appName=Cluster0"
+    url = "mongodb+srv://petr:SPL_data6@cluster0.bysfd7d.mongodb.net/?appName=Cluster0"
     client = MongoClient(url)
 
     db = client["Petr"]
