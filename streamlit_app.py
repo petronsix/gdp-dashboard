@@ -1,151 +1,94 @@
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
+from pymongo import MongoClient
+from datetime import datetime
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
+st.set_page_config(page_title="SPL Monitor", page_icon="🔊")
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+# -------------------------------------------------------------------
+# DATABASE CONNECTION
+# -------------------------------------------------------------------
 
 @st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+def load_spl_data():
+    """Fetch SPL time-series data from MongoDB and return as a DataFrame."""
+    url = "mongodb+srv://petr:password@cluster0.bysfd7d.mongodb.net/?appName=Cluster0"
+    client = MongoClient(url)
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+    db = client["Petr"]
+    collection = db["SPL_data"]
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+    docs = list(collection.find({}, {"_id": 0}))  # don't include _id
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+    if not docs:
+        return pd.DataFrame(columns=["timestamp", "Value"])
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
+    df = pd.DataFrame(docs)
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+    # Convert timestamp strings → real datetime
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
 
-    return gdp_df
+    # Remove broken entries
+    df = df.dropna(subset=["timestamp"])
 
-gdp_df = get_gdp_data()
+    return df.sort_values("timestamp")
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
 
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
+# -------------------------------------------------------------------
+# LOAD DATA
+# -------------------------------------------------------------------
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
+df = load_spl_data()
 
-# Add some spacing
-''
-''
+st.title("🔊 SPL A-Weighted Monitor")
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+if df.empty:
+    st.warning("No SPL data found in MongoDB.")
+    st.stop()
 
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
+# -------------------------------------------------------------------
+# FILTERS
+# -------------------------------------------------------------------
 
-countries = gdp_df['Country Code'].unique()
+min_time = df["timestamp"].min()
+max_time = df["timestamp"].max()
 
-if not len(countries):
-    st.warning("Select at least one country")
+st.subheader("Filter Time Range")
 
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
+start, end = st.slider(
+    "Select time window:",
+    min_value=min_time.to_pydatetime(),
+    max_value=max_time.to_pydatetime(),
+    value=(min_time.to_pydatetime(), max_time.to_pydatetime())
 )
 
-''
-''
+filtered = df[(df["timestamp"] >= start) & (df["timestamp"] <= end)]
 
+# -------------------------------------------------------------------
+# CHART
+# -------------------------------------------------------------------
 
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
+st.subheader("A-Weighted Sound Pressure Level Over Time")
 
-st.header(f'GDP in {to_year}', divider='gray')
+st.line_chart(
+    filtered,
+    x="timestamp",
+    y="Value"
+)
 
-''
+# -------------------------------------------------------------------
+# STATS
+# -------------------------------------------------------------------
 
-cols = st.columns(4)
+st.subheader("Summary")
 
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
+col1, col2, col3 = st.columns(3)
 
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
+with col1:
+    st.metric("Min dB(A)", f"{filtered['Value'].min():.1f}")
 
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
+with col2:
+    st.metric("Max dB(A)", f"{filtered['Value'].max():.1f}")
 
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+with col3:
+    st.metric("Avg dB(A)", f"{filtered['Value'].mean():.1f}")
