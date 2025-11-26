@@ -29,9 +29,12 @@ def load_spl_data():
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
 
     # Remove broken entries
-    df = df.dropna(subset=["timestamp"])
+    df = df.dropna(subset=["timestamp", "Value"])  # <--- přidáno Value
 
     return df.sort_values("timestamp")
+
+
+
 
 
 # -------------------------------------------------------------------
@@ -73,6 +76,9 @@ start, end = st.slider(
 )
 
 filtered = df[(df["timestamp"] >= start) & (df["timestamp"] <= end)]
+
+# ještě jednou pro jistotu odfiltrujeme NaN
+filtered = filtered.dropna(subset=["Value"])
 
 # -------------------------------------------------------------------
 # CHART
