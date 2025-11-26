@@ -87,6 +87,8 @@ if filtered.empty:
 # CHART
 # -------------------------------------------------------------------
 
+import altair as alt
+
 st.subheader("Y-axis Zoom")
 
 default_ymin = float(filtered["Value"].min())
@@ -95,7 +97,17 @@ default_ymax = float(filtered["Value"].max())
 y_min = st.number_input("Y-min", value=default_ymin, step=1.0)
 y_max = st.number_input("Y-max", value=default_ymax, step=1.0)
 
-import altair as alt
+# způsob jak zabránit propojování čar když chybí data
+line = alt.Chart(filtered).mark_line().encode(
+    x=alt.X("timestamp:T", title="Time"),
+    y=alt.Y(
+        "Value:Q",
+        title="SPL dB(A)",
+        scale=alt.Scale(domain=[y_min, y_max])
+    )
+).transform_filter(
+    alt.datum.Value != None
+)
 
 hover = alt.selection_point(
     fields=["timestamp"],
@@ -104,21 +116,21 @@ hover = alt.selection_point(
     empty=False
 )
 
-line = alt.Chart(filtered).mark_line().encode(
-    x=alt.X("timestamp:T", title="Time"),
-   y=alt.Y("Value:Q", title="SPL dB(A)", scale=alt.Scale(domain=[y_min, y_max]))
-
-)
-
-points = line.mark_point().encode(
+points = alt.Chart(filtered).mark_point().encode(
+    x="timestamp:T",
+    y=alt.Y(
+        "Value:Q",
+        scale=alt.Scale(domain=[y_min, y_max])
+    ),
     opacity=alt.condition(hover, alt.value(1), alt.value(0))
 )
 
 tooltips = alt.Chart(filtered).mark_rule().encode(
     x="timestamp:T",
-    y=alt.Y("Value:Q", title="SPL dB(A)", scale=alt.Scale(domain=[y_min, y_max]))
-)
-
+    y=alt.Y(
+        "Value:Q",
+        scale=alt.Scale(domain=[y_min, y_max])
+    ),
     opacity=alt.condition(hover, alt.value(0.3), alt.value(0)),
     tooltip=[
         alt.Tooltip("timestamp:T", title="Time", format="%Y-%m-%d %H:%M:%S"),
@@ -129,8 +141,6 @@ tooltips = alt.Chart(filtered).mark_rule().encode(
 chart = (line + points + tooltips).interactive()
 
 st.altair_chart(chart, use_container_width=True)
-
-st.subheader("Y-Axis Settings")
 
 
 # -------------------------------------------------------------------
