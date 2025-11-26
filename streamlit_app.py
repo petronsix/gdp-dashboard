@@ -119,6 +119,12 @@ chart = (line + points + tooltips).interactive()
 
 st.altair_chart(chart, use_container_width=True)
 
+st.subheader("Y-Axis Settings")
+
+y_min = st.number_input("Y-min", value=float(filtered["Value"].min()), step=1.0)
+y_max = st.number_input("Y-max", value=float(filtered["Value"].max()), step=1.0)
+y_step = st.number_input("Y-axis resolution (step)", value=1.0, step=0.5)
+
 # -------------------------------------------------------------------
 # STATS
 # -------------------------------------------------------------------
