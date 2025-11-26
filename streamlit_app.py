@@ -79,6 +79,9 @@ filtered = df[(df["timestamp"] >= start) & (df["timestamp"] <= end)]
 
 # ještě jednou pro jistotu odfiltrujeme NaN
 filtered = filtered.dropna(subset=["Value"])
+if filtered.empty:
+    st.warning("No valid SPL data in the selected time range.")
+    st.stop()
 
 # -------------------------------------------------------------------
 # CHART
