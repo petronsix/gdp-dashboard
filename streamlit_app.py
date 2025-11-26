@@ -106,11 +106,7 @@ hover = alt.selection_point(
 
 line = alt.Chart(filtered).mark_line().encode(
     x=alt.X("timestamp:T", title="Time"),
-    y=alt.Y(
-    "Value:Q",
-    title="SPL dB(A)",
-    scale=alt.Scale(domain=[y_min, y_max])
-)
+   y=alt.Y("Value:Q", title="SPL dB(A)", scale=alt.Scale(domain=[y_min, y_max]))
 
 )
 
@@ -120,10 +116,7 @@ points = line.mark_point().encode(
 
 tooltips = alt.Chart(filtered).mark_rule().encode(
     x="timestamp:T",
-    y=alt.Y(
-    "Value:Q",
-    title="SPL dB(A)",
-    scale=alt.Scale(domain=[y_min, y_max])
+    y=alt.Y("Value:Q", title="SPL dB(A)", scale=alt.Scale(domain=[y_min, y_max]))
 )
 
     opacity=alt.condition(hover, alt.value(0.3), alt.value(0)),
