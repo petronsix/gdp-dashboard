@@ -87,6 +87,14 @@ if filtered.empty:
 # CHART
 # -------------------------------------------------------------------
 
+st.subheader("Y-axis Zoom")
+
+default_ymin = float(filtered["Value"].min())
+default_ymax = float(filtered["Value"].max())
+
+y_min = st.number_input("Y-min", value=default_ymin, step=1.0)
+y_max = st.number_input("Y-max", value=default_ymax, step=1.0)
+
 import altair as alt
 
 hover = alt.selection_point(
@@ -98,7 +106,12 @@ hover = alt.selection_point(
 
 line = alt.Chart(filtered).mark_line().encode(
     x=alt.X("timestamp:T", title="Time"),
-    y=alt.Y("Value:Q", title="SPL dB(A)")
+    y=alt.Y(
+    "Value:Q",
+    title="SPL dB(A)",
+    scale=alt.Scale(domain=[y_min, y_max])
+)
+
 )
 
 points = line.mark_point().encode(
@@ -107,7 +120,12 @@ points = line.mark_point().encode(
 
 tooltips = alt.Chart(filtered).mark_rule().encode(
     x="timestamp:T",
-    y="Value:Q",
+    y=alt.Y(
+    "Value:Q",
+    title="SPL dB(A)",
+    scale=alt.Scale(domain=[y_min, y_max])
+)
+
     opacity=alt.condition(hover, alt.value(0.3), alt.value(0)),
     tooltip=[
         alt.Tooltip("timestamp:T", title="Time", format="%Y-%m-%d %H:%M:%S"),
